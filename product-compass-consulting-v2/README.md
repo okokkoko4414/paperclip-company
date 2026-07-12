@@ -1,4 +1,4 @@
-# Product Compass Consulting
+# Product Compass Consulting V2
 
 > Full-service AI product management consultancy with 69 specialized skills and enforceable delivery governance — delegate-with-tree issue tracking, quantifiable acceptance criteria, document traceability, and escalation protocols
 
@@ -158,7 +158,7 @@ See `governance/` for the V2.1 acceptance criteria spec and the automated `accep
 ## Getting Started
 
 ```bash
-npx companies.sh add paperclipai/companies/product-compass-consulting
+npx companies.sh add okokkoko4414/paperclip-company/product-compass-consulting-v2
 ```
 
 Or import from a local path:

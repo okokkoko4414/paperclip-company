@@ -1,19 +1,21 @@
 ---
-name: Product Compass Consulting
-description: Full-service AI product management consultancy with 65 specialized skills covering discovery, strategy, execution, research, analytics, go-to-market, marketing, and PM career tools
-slug: product-compass-consulting
+name: Product Compass Consulting V2
+description: Full-service AI product management consultancy with 69 specialized skills (65 PM + 4 governance) and enforceable delivery pipeline — delegation tree, quality gates, document traceability, escalation protocol
+slug: product-compass-consulting-v2
 schema: agentcompanies/v1
-version: 1.0.0
+version: 2.0.0
 license: MIT
 authors:
   - name: Pawel Huryn
+  - name: okokkoko4414
 goals:
   - Help teams make better product decisions using proven PM frameworks
   - Cover the full product lifecycle from discovery through launch and growth
   - Provide structured, repeatable PM workflows powered by AI
+  - Enforce traceable, reviewable deliverables with quantifiable quality gates
 ---
 
-Product Compass Consulting is a full-service AI product management consultancy. The company encodes 65 proven PM frameworks — from Teresa Torres' Opportunity Solution Trees to Lean Canvas to RICE prioritization — into structured agent workflows.
+Product Compass Consulting V2 is a full-service AI product management consultancy with enforceable delivery governance. Based on the original Product Compass Consulting template, it encodes 65 proven PM frameworks plus 4 governance skills — from Teresa Torres' Opportunity Solution Trees to Lean Canvas to RICE prioritization — into structured agent workflows.
 
 ## How the company works
 
