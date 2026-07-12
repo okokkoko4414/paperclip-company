@@ -17,7 +17,7 @@ Product Compass Consulting is a full-service AI product management consultancy. 
 
 ## How the company works
 
-The CEO receives client challenges and routes them to the right department. Work typically flows through the organization following the product lifecycle:
+The CEO receives client challenges and routes them to the right department using the **delegate-with-tree** skill. Work flows through the organization following the product lifecycle AND the management hierarchy:
 
 1. **Discovery** — Brainstorm ideas, map assumptions, design experiments, conduct user research
 2. **Strategy** — Define vision, evaluate business models, analyze competition, set pricing
@@ -30,4 +30,19 @@ The CEO receives client challenges and routes them to the right department. Work
 
 Not every engagement touches all departments. The CEO matches the client's need to the right team.
 
-Generated from [pm-skills](https://github.com/phuryn/pm-skills) with the company-creator skill from [Paperclip](https://github.com/paperclipai/paperclip)
+### Delegation Tree Convention
+Every multi-person task follows a parent/child issue tree:
+- The **parent issue assignee** is the manager responsible for that subtree
+- The **child issue assignees** are the individual contributors executing the work
+- When all children are done, the parent assignee is automatically woken to review
+- See the `delegate-with-tree` skill for detailed rules
+
+### Quality Gates
+All deliverables must pass the acceptance criteria before being marked done:
+- 5 P0 standards (must all pass) + 2 P1 standards
+- Validation is automated via bash scripts
+- See the `acceptance-criteria` skill and `governance/` directory
+
+### Document Standards
+Every deliverable must include frontmatter with author, reviewer, version, and status.
+See the `document-template` skill for the required format.
