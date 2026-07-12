@@ -1,8 +1,8 @@
 # Product Compass Consulting
 
-> Full-service AI product management consultancy with 65 specialized skills covering discovery, strategy, execution, research, analytics, go-to-market, marketing, and PM career tools
+> Full-service AI product management consultancy with 69 specialized skills and enforceable delivery governance — delegate-with-tree issue tracking, quantifiable acceptance criteria, document traceability, and escalation protocols
 
-> An [Agent Company](https://agentcompanies.io) based on [pm-skills](https://github.com/phuryn/pm-skills) — product management skills for discovery, strategy, execution, analytics, go-to-market, and career development
+> An [Agent Company](https://agentcompanies.io) based on [pm-skills](https://github.com/phuryn/pm-skills) — product management skills for discovery, strategy, execution, analytics, go-to-market, and career development, enhanced with governance skills from [okokkoko4414](https://github.com/okokkoko4414)
 
 ![Org Chart](images/org-chart.png)
 
@@ -13,7 +13,20 @@
 | Content | Count |
 |---------|-------|
 | Agents | 48 |
-| Skills | 65 |
+| Skills | 69 (65 PM + 4 governance) |
+
+## Governance Layer
+
+This company includes a governance layer that transforms it from a static org chart into an enforceable delivery pipeline:
+
+| Skill | Purpose |
+|-------|---------|
+| **delegate-with-tree** | Parent/child Issue tree that mirrors org hierarchy — completed work auto-flows back to managers for review |
+| **acceptance-criteria** | 7 quantifiable quality gates (5 P0 + 2 P1) — no more "feels right" reviews |
+| **document-template** | Mandatory frontmatter on every deliverable — author, reviewer, version, status traceability |
+| **vp-raise-convention** | Escalation protocol — blocked managers must report within 1 heartbeat cycle |
+
+See `governance/` for the V2.1 acceptance criteria spec and the automated `acceptance_check.sh` validation script.
 
 ### Agents
 
@@ -73,6 +86,7 @@
 | Skill | Description | Source |
 |-------|-------------|--------|
 | ab-test-analysis | Analyze A/B test results with statistical significance, sample size validation, confidence intervals, and ship/extend/stop recommendations | [github](https://github.com/phuryn/pm-skills/blob/main/pm-data-analytics/skills/ab-test-analysis/SKILL.md) |
+| acceptance-criteria | Validate deliverables against 7 quantifiable quality gates (5 P0 + 2 P1) before marking work as done — automated via bash script | inline |
 | analyze-feature-requests | Analyze and prioritize a list of feature requests by theme, strategic alignment, impact, effort, and risk | [github](https://github.com/phuryn/pm-skills/blob/main/pm-product-discovery/skills/analyze-feature-requests/SKILL.md) |
 | ansoff-matrix | Generate an Ansoff Matrix analysis mapping growth strategies across market penetration, market development, product development, and diversification | [github](https://github.com/phuryn/pm-skills/blob/main/pm-product-strategy/skills/ansoff-matrix/SKILL.md) |
 | beachhead-segment | Identify the first beachhead market segment for a product launch. Evaluates segments against burning pain, willingness to pay, winnable market share, and referral potential | [github](https://github.com/phuryn/pm-skills/blob/main/pm-go-to-market/skills/beachhead-segment/SKILL.md) |
@@ -86,7 +100,9 @@
 | competitive-battlecard | Create sales-ready competitive battlecards comparing your product against a specific competitor — positioning, feature comparison, objection handling, and win/loss patterns | [github](https://github.com/phuryn/pm-skills/blob/main/pm-go-to-market/skills/competitive-battlecard/SKILL.md) |
 | competitor-analysis | Analyze competitors with strengths, weaknesses, and differentiation opportunities. Identifies direct competitors and maps the competitive landscape | [github](https://github.com/phuryn/pm-skills/blob/main/pm-market-research/skills/competitor-analysis/SKILL.md) |
 | create-prd | Create a Product Requirements Document using a comprehensive 8-section template covering problem, objectives, segments, value propositions, solution, and release planning | [github](https://github.com/phuryn/pm-skills/blob/main/pm-execution/skills/create-prd/SKILL.md) |
+| delegate-with-tree | Delegate work by building a parent/child issue tree that mirrors the org hierarchy — managers own parent issues, ICs own child issues, completed work auto-flows back for review | inline |
 | customer-journey-map | Create an end-to-end customer journey map with stages, touchpoints, emotions, pain points, and opportunities | [github](https://github.com/phuryn/pm-skills/blob/main/pm-market-research/skills/customer-journey-map/SKILL.md) |
+| document-template | Enforce mandatory frontmatter metadata on every deliverable — author, reviewer, version, status — so every file is traceable to its creator and review chain | inline |
 | draft-nda | Draft a detailed Non-Disclosure Agreement between two parties covering information types, jurisdiction, and clauses needing legal review | [github](https://github.com/phuryn/pm-skills/blob/main/pm-toolkit/skills/draft-nda/SKILL.md) |
 | dummy-dataset | Generate realistic dummy datasets for testing with customizable columns, constraints, and output formats (CSV, JSON, SQL, Python script) | [github](https://github.com/phuryn/pm-skills/blob/main/pm-execution/skills/dummy-dataset/SKILL.md) |
 | grammar-check | Identify grammar, logical, and flow errors in text and suggest targeted fixes without rewriting the entire text | [github](https://github.com/phuryn/pm-skills/blob/main/pm-toolkit/skills/grammar-check/SKILL.md) |
@@ -136,15 +152,28 @@
 | user-stories | Create user stories following the 3 C's (Card, Conversation, Confirmation) and INVEST criteria with descriptions, design links, and acceptance criteria | [github](https://github.com/phuryn/pm-skills/blob/main/pm-execution/skills/user-stories/SKILL.md) |
 | value-prop-statements | Generate value proposition statements for marketing, sales, and onboarding from existing value propositions | [github](https://github.com/phuryn/pm-skills/blob/main/pm-marketing-growth/skills/value-prop-statements/SKILL.md) |
 | value-proposition | Design a detailed value proposition using a 6-part JTBD template — Who, Why, What before, How, What after, Alternatives | [github](https://github.com/phuryn/pm-skills/blob/main/pm-product-strategy/skills/value-proposition/SKILL.md) |
+| vp-raise-convention | Escalation protocol for managers — when blocked, how to escalate, and the hard rule that silence is not an option beyond one heartbeat cycle | inline |
 | wwas | Create product backlog items in Why-What-Acceptance format — independent, valuable, testable items with strategic context | [github](https://github.com/phuryn/pm-skills/blob/main/pm-execution/skills/wwas/SKILL.md) |
 
 ## Getting Started
 
 ```bash
-npx paperclipai company import this-github-url-or-folder
+npx companies.sh add paperclipai/companies/product-compass-consulting
 ```
 
-See [Paperclip](https://paperclip.ing) for more information.
+Or import from a local path:
+
+```bash
+npx companies.sh add ./product-compass-consulting
+```
+
+### Running Acceptance Validation
+
+```bash
+bash governance/acceptance_check.sh
+```
+
+See [Paperclip](https://paperclip.ing) and [companies.sh](https://companies.sh) for more information.
 
 ---
-Exported from [Paperclip](https://paperclip.ing) on 2026-03-23
+Based on [Product Compass Consulting](https://github.com/paperclipai/companies) template. Enhanced with governance skills from [okokkoko4414](https://github.com/okokkoko4414) on 2026-07-13.
