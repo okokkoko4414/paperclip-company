@@ -39,7 +39,7 @@ R9-R13: 组件升级抗脆弱（patch 脱离 upstream、版本 pin、plugin/hook
 
 | 交付物 | 位置 | 状态 |
 |---|---|---|
-| 后端 403 修复 patch | `patches/0001-fix-fallback-to-frontmatter-adapterType.patch` | `git apply --check` 通过 |
+| 后端 403 修复 patch | `patches/403-adapterType-fallback.patch` | `git diff 0cb2dde~1..0cb2dde` 生成，804 bytes，clean apply |
 | 后端 FK cascade 修复 | `paperclip/server/src/services/companies.ts` | 已提交 `e6bd9c0` |
 | Config 自愈脚本 | `paperclip-mcp-v2/setup-mcp-config.sh` | 3/3 测试通过 |
 | Hermes 保活插件 | `~/.hermes/plugins/observability/geo119_keepalive/` | 3/3 测试通过，已启用 |
@@ -111,7 +111,7 @@ MCP 实例：`mcp__paperclip_a/b/c__*`，每实例 82 工具，合计 246 工具
 | 1 | 三实例同时可用 | agent.log: `registered 246 tool(s) from 3 server(s)` |
 | 2 | 写操作隔离零串扰 | T4 通过——3 个测试 issue 各落各家 |
 | 3 | 重启后工具自动注入 | 插件 `on_session_start` → `discover_mcp_tools()` 生效 |
-| 4 | MCP 含 delete_agent | T7 通过——3 实例均注册 |
+| 4 | MCP 含 delete_agent | T7 通过——agents.py 注册 + server.json 声明，3 实例均含 |
 | 5 | 环境干净 | T8 通过——3 公司，0 幽灵，0 重复 agent |
 | 6 | 需求文档已补 | R1-R4 已写入 Phase0-开发需求文档 |
 | 7 | git pull 后 403 修复仍在 | T5 通过——patch 文件可重放 |

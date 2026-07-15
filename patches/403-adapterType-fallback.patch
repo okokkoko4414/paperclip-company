@@ -1,0 +1,13 @@
+diff --git a/server/src/services/company-portability.ts b/server/src/services/company-portability.ts
+index 1024a87..50dd4e7 100644
+--- a/server/src/services/company-portability.ts
++++ b/server/src/services/company-portability.ts
+@@ -2709,7 +2709,7 @@ function buildManifestFromPackageFiles(
+       reportsToSlug: asString(frontmatter.reportsTo) ?? asString(extension.reportsTo),
+       reportsToExistingAgentId: asString(extension.reportsToExistingAgentId),
+       reportsToExistingAgentSlug: asString(extension.reportsToExistingAgentSlug),
+-      adapterType: asString(extensionAdapter?.type) ?? "process",
++      adapterType: asString(extensionAdapter?.type) ?? asString(frontmatter.adapterType) ?? "process",
+       adapterConfig,
+       runtimeConfig,
+       permissions: extensionPermissions ?? {},
