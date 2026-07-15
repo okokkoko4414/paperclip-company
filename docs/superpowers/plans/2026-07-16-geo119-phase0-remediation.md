@@ -267,11 +267,11 @@ git commit -m "test: add config self-heal script tests (3 cases)"
 
 **官方 SDK 参考**：`https://hermes-agent.nousresearch.com/docs/developer-guide/plugins`
 
-- 插件目录：`~/.hermes/plugins/<category>/<name>/plugin.yaml + __init__.py`
-- `register(ctx)` 入口，`ctx.register_hook("on_session_start", callback)` 注册 hook
-- `on_session_start` 签名：`(session_id, model, platform)` + `**kwargs`
-- `ctx._cli_ref` 在交互式 CLI session 中可用（beta 正是交互式 session）
-- 重载入口：Hermes 无官方 `ctx.reload_mcp()` API。方案 D 通过 `ctx._cli_ref` 访问 CLI 实例触发 reload；若 `_cli_ref` 不可用（非交互式 context），退化至 `subprocess.run(["hermes", "--profile", "beta", "mcp", "list"])` 触发 MCP 重连
+**重载入口实测确认（2026-07-16 操盘手核）**：
+- `tools/mcp_tool.py:5202` 有模块级函数 `discover_mcp_tools() -> List[str]`，**无任何实例/self 依赖**，插件内 `from tools.mcp_tool import discover_mcp_tools; discover_mcp_tools()` 可直接调用
+- 内部 `register_mcp_servers`（line 5103-5132）显式收集 `stale_cached`（session 为 None 的 parking/断连 server），通过 `_signal_reconnect` 唤醒重连并重注工具
+- line 5194 输出 `MCP: registered {n} tool(s) from {len(connected)} server(s)` —— 设计/计划验收的 agent.log 证据来源
+- **主进程内调用，直接影响当前 session 工具集。不等于 subprocess**
 
 **Files:**
 - Create: `/home/ok2049/.hermes/plugins/observability/geo119_keepalive/plugin.yaml`
@@ -279,8 +279,8 @@ git commit -m "test: add config self-heal script tests (3 cases)"
 - Create: `/media/ok2049/work/work/paperclip-company-v2/tests/test-keepalive-plugin.py`
 
 **Interfaces:**
-- Consumes: Hermes plugin facade (`register_hook`)
-- Produces: `on_session_start` hook → MCP reload trigger
+- Consumes: Hermes plugin facade (`register_hook`), `tools.mcp_tool.discover_mcp_tools`
+- Produces: `on_session_start` hook → 主进程内 `discover_mcp_tools()` → parking 实例重连 + 工具重注
 
 - [ ] **Step 1: Create plugin directory**
 
@@ -296,8 +296,9 @@ name: geo119_keepalive
 version: "0.1.0"
 description: >
   GEO119 Phase 0 — auto-reload MCP servers on session start to keep
-  3 paperclip instances (a/b/c) alive.  Uses on_session_start hook.
-  Requires approvals.mcp_reload_confirm: false for non-interactive reload.
+  3 paperclip instances (a/b/c) alive. Calls discover_mcp_tools()
+  in-process on session start, which reconnects parked servers and
+  re-registers their tools. Zero core changes.
 author: GEO119
 provides_hooks:
   - on_session_start
@@ -309,9 +310,10 @@ provides_hooks:
 # tests/test-keepalive-plugin.py
 """验证 keepalive 插件的接口契约。
 
-测试三项：register 调用、hook 回调签名兼容、_cli_ref 重载路径存在。
+测试三项：register 调用、hook 回调签名兼容、_trigger_reload 调的是 discover_mcp_tools。
 """
 import sys, inspect, importlib.util
+from unittest.mock import patch
 
 PLUGIN_INIT = "/home/ok2049/.hermes/plugins/observability/geo119_keepalive/__init__.py"
 
@@ -347,11 +349,17 @@ def test_callback_signature_compatible():
     assert has_var_kwargs or has_session_id, \
         f"签名不兼容: {params}（需 session_id 或 **kwargs）"
 
-def test_reload_entry_exists():
-    """_trigger_reload() 函数必须存在且可调用。"""
+def test_trigger_reload_calls_discover_mcp_tools():
+    """_trigger_reload() 必须调用 discover_mcp_tools()（主进程内，非 subprocess）。"""
     mod = _load()
     assert hasattr(mod, '_trigger_reload'), "缺少 _trigger_reload()"
     assert callable(mod._trigger_reload), "_trigger_reload 不可调用"
+
+    # 验证 _trigger_reload 调用的是 tools.mcp_tool.discover_mcp_tools，
+    # 而非 subprocess 或其他错误路径
+    with patch.object(mod, 'discover_mcp_tools') as mock_discover:
+        mod._trigger_reload()
+        mock_discover.assert_called_once()
 ```
 
 - [ ] **Step 4: Run test, verify FAILS**
@@ -367,47 +375,38 @@ Expected: 3 FAIL — `__init__.py` does not exist.
 
 ```python
 # __init__.py
-"""GEO119 Phase 0 — MCP 保活插件（方案 D：on_session_start + 非交互 reload）。
+"""GEO119 Phase 0 — MCP 保活插件（方案 D：on_session_start + discover_mcp_tools）。
 
-注册 on_session_start hook。Session 启动后自动触发全量 MCP reload，
-确保三实例 (paperclip_a/b/c) 工具全部注入。零改 Hermes 核心。
+注册 on_session_start hook。Session 启动后主进程内调用 discover_mcp_tools()，
+该函数内部 register_mcp_servers 会：
+  - 重连 parking/断连的 server（_signal_reconnect）
+  - 重注工具到当前 session
+  - 输出日志 "MCP: registered {n} tool(s) from {N} server(s)"
 
-Reload 路径（按优先级）：
-1. ctx._cli_ref → CLI 实例 → 触发 MCP refresh（交互式 session 可用）
-2. subprocess 调 hermes CLI（需 mcp_reload_confirm: false）
-3. 退化：agent.log 告警
+零改 Hermes 核心。discover_mcp_tools 是 mcp_tool.py:5202 的模块级函数。
 """
 import logging
-import subprocess
-import os
+from tools.mcp_tool import discover_mcp_tools
 
 logger = logging.getLogger(__name__)
 
 
 def _trigger_reload():
-    """触发 MCP 全量 reload。
+    """主进程内触发 MCP 全量重连（含 parking 实例）。
 
-    在真实 session 环境中运行。实施后以 agent.log 中
-    'registered ... from 3 server(s)' 为通过证据。
+    调用 discover_mcp_tools()，该函数：
+    1. 扫描 mcp_servers 配置
+    2. 对 parking/断连的 server 调用 _signal_reconnect 唤醒重连
+    3. 重注工具到当前 session
+    4. 输出 "MCP: registered {n} tool(s) from {N} server(s)" 到 agent.log
+
+    实施后以 agent.log 中出现 'registered ... from 3 server(s)' 为通过证据。
     """
     try:
-        # 路径 1：通过 hermes CLI 间接触发 MCP 重连
-        # mcp_reload_confirm: false 使 reload 非交互
-        result = subprocess.run(
-            ["hermes", "mcp", "list"],
-            capture_output=True, text=True, timeout=15,
-            env={**os.environ, "HERMES_PROFILE": os.environ.get("HERMES_PROFILE", "beta")}
-        )
-        logger.info(f"GEO119 keepalive: mcp list rc={result.returncode}")
-    except FileNotFoundError:
-        logger.warning("GEO119 keepalive: hermes CLI not on PATH")
+        discover_mcp_tools()
+        logger.info("GEO119 keepalive: discover_mcp_tools() completed")
     except Exception as exc:
-        logger.error(f"GEO119 keepalive: reload probe failed: {exc}")
-
-    logger.info(
-        "GEO119 keepalive: session started. "
-        "Verify with: grep 'registered.*from 3 server' agent.log"
-    )
+        logger.error(f"GEO119 keepalive: discover_mcp_tools() failed: {exc}")
 
 
 def _on_session_start_callback(session_id=None, model=None, platform=None, **kwargs):
@@ -431,28 +430,20 @@ cd /media/ok2049/work/work/paperclip-company-v2
 python3 -m pytest tests/test-keepalive-plugin.py -v
 ```
 
-Expected: 3 passed.
+Expected: 3 passed (register + signature + discover_mcp_tools mock verified).
 
-- [ ] **Step 7: Set non-interactive reload config**
-
-```bash
-hermes config set approvals.mcp_reload_confirm false
-```
-
-Expected: `✓ Set approvals.mcp_reload_confirm = false`.
-
-- [ ] **Step 8: Enable the plugin**
+- [ ] **Step 7: Enable the plugin**
 
 ```bash
 hermes plugins enable observability/geo119_keepalive
 ```
 
-- [ ] **Step 9: Commit plugin files + test**
+- [ ] **Step 8: Commit plugin files + test**
 
 ```bash
 cd /home/ok2049/.hermes
 git add plugins/observability/geo119_keepalive/
-git commit -m "feat: add GEO119 MCP keepalive plugin (on_session_start + reload)"
+git commit -m "feat: add GEO119 MCP keepalive plugin (on_session_start → discover_mcp_tools)"
 
 cd /media/ok2049/work/work/paperclip-company-v2
 git add tests/test-keepalive-plugin.py
