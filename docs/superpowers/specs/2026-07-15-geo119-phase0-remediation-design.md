@@ -206,22 +206,35 @@ bash /media/ok2049/work/work/paperclip-mcp-v2/setup-mcp-config.sh
 
 ---
 
-## 动作 4：Hermes session 保活（R2、R6、R11）
+## 动作 4：Hermes session 保活 — 方案 D（R2、R6、R11）
 
 ### 问题
 
-`mcp_tool.py:2138` — parking 会 deregister tools。`turn_context.py:198` — `refresh_agent_mcp_tools` 有 gate。Session 重建后多实例 MCP 工具不自动重注。
+`mcp_tool.py:2138` — parking 会 deregister tools。`turn_context.py:198` — `refresh_agent_mcp_tools` 仅在 between-turns 触发且 gated by `has_registered_mcp_tools()`。Session 重建后多实例 MCP 工具不自动重注。
 
-### 方案（不修改 Hermes 源码，符合 R11）
+### 方案 D：on_session_start hook + 非交互 reload（零改核心）
 
-Hermes 启动后，等待所有 MCP server 初始化完成，自动触发一次全量 `/reload-mcp --all`。
+已核实 Hermes 具备以下能力：
 
-实现方式：
-1. 写一个 Hermes startup hook 脚本，放在 beta profile 的 hooks 目录
-2. 该脚本在 Hermes session 初始化完成后执行 `/reload-mcp --all`
-3. 重载结果写入 agent.log
+1. **`on_session_start` hook**（`plugins.py:160`，`hooks.py:1158` 提供 `register_hook()`）：插件可注册回调，session 启动时自动触发
+2. **非交互 reload**（`config.py:2565`：`mcp_reload_confirm` 默认 `True`）：设 `approvals.mcp_reload_confirm: false` 后 `/reload-mcp` 跳过确认提示，可被 hook 回调直接调用
 
-如果 Hermes 不支持 startup hook，备选方案：在 wrapper.sh 里加一个延迟命令，wrapper 初始化完成后向 Hermes 发送 reload 信号。
+**实施**：
+
+1. 写一个 Hermes plugin，注册到 `on_session_start` hook
+2. 回调函数内调用 `_reload_mcp()`（非交互路径，读 `approvals.mcp_reload_confirm` 配置项跳过确认）
+3. 重启 Hermes → session 启动 → `on_session_start` 触发 → 自动全量 reload MCP → 三实例工具注入
+
+**已证伪的歧路（实施方勿走）**：
+- 方案 A（改 `turn_context.py` 核心循环）→ 侵入核心，升级冲突
+- 方案 C（hooks 目录磁盘脚本）→ 实测 Hermes hooks 是内部 Python 回调体系，非 session_start 自动执行的 shell 脚本
+- 方案 B（手动 `/reload-mcp`）→ 运维负债
+
+**符合 R11**：零改核心文件，hook 落在 plugin 扩展层，Hermes 升级不覆盖。
+
+### 待核项（实施前最终确认）
+
+`on_session_start` 是否对 plugin/profile 开放注册（`hooks.py:1158` 确认 `register_hook` 是 plugin facade 方法，`plugins.py:160` 确认 `on_session_start` 在 VALID_HOOKS 中）。实施时读 `plugins.py` 的 `register_hook` 调用确认无额外 gate。
 
 ### 验证
 
@@ -234,27 +247,25 @@ grep "MCP: registered 246 tool(s) from 3 server(s)" \
 
 ---
 
-## 动作 5：MCP 注册 delete_agent（R3、R7）
+## 动作 5：MCP 删除能力补全（R3、R7）
 
-### 问题
+### 实测修正
 
-`paperclip-mcp/tools/agents.py` 已有 `delete_agent` 函数实现，但未在 `register_tools` 中注册到 MCP 工具列表。操盘手删 agent 只能绕 REST API。
+`paperclip-mcp/tools/agents.py:18` **已注册** `mcp.tool()(delete_agent)`。设计文档中"未注册需加"是错误前提。三实例均已注册，delete_agent 当前可用。
+
+### 真正缺口：delete_company
+
+`companies.py` 中经核实无 `delete_company` 函数实现。操盘手删公司只能绕 REST API。
 
 ### 方案
 
-在 `paperclip-mcp/tools/agents.py` 的 `register_tools` 函数中添加：
-
-```python
-mcp.tool()(delete_agent)
-```
-
-改在三个 v2 目录各自的源码副本中，不在 `server.json`（JSON 是打包产物，升级会覆盖）。改在 .py 文件可在 git 控制下恢复。
-
-`delete_company` 评估：若 agents.py 或 companies.py 已有实现则一并注册；否则在需求文档中写明 REST 路径（`DELETE /api/companies/:id`）作为已知路径。
+1. 实施时核实三实例 `agents.py:18` 均含 `mcp.tool()(delete_agent)` 注册
+2. `delete_company`：若 `companies.py` 无实现，在需求文档写明 REST 清理路径：`DELETE /api/companies/:id`（已核 `svc.remove` 事务级联安全）
 
 ### 验证
 
-MCP 工具列表含 `mcp__paperclip_a__delete_agent`（b/c 同理）。删除一个测试 agent 成功。
+- MCP 工具列表含 `delete_agent`（三实例核实）
+- 公司删除路径已文档化（MCP 或 REST）
 
 ---
 
@@ -452,7 +463,7 @@ bash /media/ok2049/work/work/paperclip-company-v2/phase0-regression-check.sh
 ```
 动作 1 (patch 文件)
   └─→ 动作 2 (C 模板 adapter.type)
-        ├─→ 动作 5 (delete_agent 注册)
+        ├─→ 动作 5 (delete_company 缺口文档化)
         ├─→ 动作 7 (版本 pin)
         └─→ 动作 6 (环境清理)
               └─→ 动作 3 (config 自愈脚本)
