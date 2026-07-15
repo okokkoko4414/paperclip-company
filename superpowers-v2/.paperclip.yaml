@@ -1,0 +1,19 @@
+schema: paperclip/v1
+agents:
+  ceo:
+    adapter:
+      type: claude_local
+  code-reviewer:
+    adapter:
+      type: claude_local
+  lead-engineer:
+    adapter:
+      type: claude_local
+  release-engineer:
+    adapter:
+      type: claude_local
+    inputs:
+      env:
+        GH_TOKEN:
+          kind: secret
+          requirement: optional
