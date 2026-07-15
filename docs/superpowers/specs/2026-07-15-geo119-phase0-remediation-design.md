@@ -513,3 +513,11 @@ bash /media/ok2049/work/work/paperclip-company-v2/phase0-regression-check.sh
 | paperclip-mcp 0.5.x 不再支持 delete_agent 注册语法 | delete_agent 是 MCP 标准工具注册，接口稳定；若变，动作 8 的 T7 检查会发现 |
 | Hermes 不支持 startup hook | 备选：wrapper.sh 侧延迟发送 reload 信号；最坏情况手动 `/reload-mcp` |
 | 幽灵 A 公司 123 issue 中有关键数据 | 删除前用 `list_issues` 检查 issue 内容，确认全部为 Phase 0 测试数据（`AC1-isolation-test-*` 等） |
+
+## Implementation Notes
+
+实施时顺手处理（不阻塞交付）：
+
+1. **动作 4 验证阈值**：设计文档中 `246 tool(s)` 是当前实测数（3×82）。实施后以实际注册工具数为准，不硬编码 246。
+2. **动作 2 防御逻辑图的优先级**：`??` 是左优先运算符——`.paperclip.yaml` 有值则用 `.paperclip.yaml`，无值则 fallback 到 `frontmatter.adapterType`，两者都无则 `"process"`。实施时读 `company-portability.ts:2712` 确认 `??` 链顺序与图示一致。
+3. **T4 回归垃圾清理**：`REGRESSION-T4-*` 测试 issue 在验证通过后删掉，不留在生产环境。
